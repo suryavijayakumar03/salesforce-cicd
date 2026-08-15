@@ -35,3 +35,7 @@ jobs:
             --source-dir force-app \
             --test-level RunLocalTests \
             --wait 120
+
+      - name: Clean up auth file
+        if: always()
+        run: rm -f ./prod-auth-url.txt
