@@ -14,16 +14,35 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "18"
+
+      - name: Detect Salesforce metadata changes
+        id: changes
+        run: |
+          CHANGED_FILES="$(git diff --name-only "${{ github.event.before }}" "${{ github.sha }}")"
+          echo "$CHANGED_FILES"
+          if echo "$CHANGED_FILES" | grep -E '^(force-app/|manifest/|sfdx-project\.json|package\.xml)' >/dev/null; then
+            echo "has_metadata_changes=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_metadata_changes=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Skip deployment when no Salesforce metadata changed
+        if: steps.changes.outputs.has_metadata_changes == 'false'
+        run: echo "No Salesforce metadata changes detected in this push. Skipping production deployment."
 
       - name: Install Salesforce CLI
+        if: steps.changes.outputs.has_metadata_changes == 'true'
         run: npm install --global @salesforce/cli
 
       - name: Authenticate to Production
+        if: steps.changes.outputs.has_metadata_changes == 'true'
         env:
           SALESFORCE_PROD_AUTH_URL: ${{ secrets.SALESFORCE_PROD_AUTH_URL }}
         run: |
@@ -31,6 +50,7 @@ jobs:
           sf org login sfdx-url --sfdx-url-file ./prod-auth-url.txt --alias prod
 
       - name: Deploy to Production
+        if: steps.changes.outputs.has_metadata_changes == 'true'
         run: |
           sf project deploy start \
             --target-org prod \
