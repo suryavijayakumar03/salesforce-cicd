@@ -21,12 +21,7 @@ Recommended required check for each branch:
 
 - `Validate Salesforce`
 
-Recommended approvals:
-
-- `dev`: optional
-- `qat`: optional
-- `preprod`: recommended
-- `main`: required
+For full automation, do not require approvals on these branches.
 
 ## 3. Environment
 
@@ -37,10 +32,7 @@ Create these GitHub environments:
 - `preprod`
 - `production`
 
-Require reviewers at least for:
-
-- `preprod`
-- `production`
+Do not require reviewers on these environments if you want hands-off promotion.
 
 ## 4. Secrets
 
@@ -62,9 +54,7 @@ Copy the one-line result into the matching GitHub secret.
 ## 6. Promotion Flow
 
 - feature branches -> `dev`
-- `dev` -> `qat`
-- `qat` -> `preprod`
-- `preprod` -> `main`
-
-Each pull request validates against the target org.
-Each merge deploys to the target org.
+- push to `dev` deploys to `DEV`, then auto-merges to `qat`
+- push to `qat` deploys to `QAT`, then auto-merges to `preprod`
+- push to `preprod` deploys to `PREPROD`, then auto-merges to `main`
+- push to `main` deploys to Production

@@ -12,13 +12,14 @@ This repository contains the Salesforce metadata and GitHub Actions workflows fo
 ## Current Flow
 
 1. Build and test changes in the `DEV` sandbox.
-2. Commit metadata changes and open a pull request into `dev`.
-3. GitHub validates the pull request against the `DEV` sandbox.
-4. After merge, GitHub deploys the same code to the `DEV` sandbox.
-5. Promote with pull requests from `dev` -> `qat` -> `preprod` -> `main`.
-6. Each pull request validates against its target org.
-7. Each merge deploys to its matching target org.
-8. `main` remains the production approval and deployment branch.
+2. Commit metadata changes and merge them into `dev`.
+3. A push to `dev` deploys automatically to the `DEV` sandbox.
+4. If `DEV` deployment succeeds, GitHub merges `dev` into `qat`.
+5. The push to `qat` deploys automatically to the `QAT` sandbox.
+6. If `QAT` deployment succeeds, GitHub merges `qat` into `preprod`.
+7. The push to `preprod` deploys automatically to the `PREPROD` sandbox.
+8. If `PREPROD` deployment succeeds, GitHub merges `preprod` into `main`.
+9. The push to `main` deploys automatically to Production.
 
 ## GitHub Secrets
 
@@ -38,14 +39,9 @@ Create these GitHub environments:
 - `preprod`
 - `production`
 
-Recommended approvals:
-
-- `dev`: no approval gate
-- `qat`: optional approval gate
-- `preprod`: manual approval recommended
-- `production`: manual approval required
+For full automation, keep these environments without manual approval gates.
 
 ## Workflows
 
-- `.github/workflows/validate-salesforce.yml`: validates pull requests targeting `dev`, `qat`, `preprod`, or `main`
-- `.github/workflows/deploy-salesforce.yml`: deploys to the target org after a merge into `dev`, `qat`, `preprod`, or `main`
+- `.github/workflows/validate-salesforce.yml`: lightweight pull request check for repo changes
+- `.github/workflows/deploy-salesforce.yml`: deploys to the target org after a push into `dev`, `qat`, `preprod`, or `main`, then promotes forward automatically

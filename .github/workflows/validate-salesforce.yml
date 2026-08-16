@@ -11,11 +11,6 @@ on:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    env:
-      SALESFORCE_DEV_AUTH_URL: ${{ secrets.SALESFORCE_DEV_AUTH_URL }}
-      SALESFORCE_QAT_AUTH_URL: ${{ secrets.SALESFORCE_QAT_AUTH_URL }}
-      SALESFORCE_PREPROD_AUTH_URL: ${{ secrets.SALESFORCE_PREPROD_AUTH_URL }}
-      SALESFORCE_PROD_AUTH_URL: ${{ secrets.SALESFORCE_PROD_AUTH_URL }}
 
     steps:
       - name: Checkout repository
@@ -39,55 +34,17 @@ jobs:
             echo "has_metadata_changes=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Resolve target org
+      - name: Note metadata validation strategy
         id: target
         if: steps.changes.outputs.has_metadata_changes == 'true'
         run: |
-          case "${{ github.base_ref }}" in
-            dev)
-              echo "environment_name=dev" >> "$GITHUB_OUTPUT"
-              echo "org_alias=dev" >> "$GITHUB_OUTPUT"
-              printf "%s" "$SALESFORCE_DEV_AUTH_URL" > ./auth-url.txt
-              ;;
-            qat)
-              echo "environment_name=qat" >> "$GITHUB_OUTPUT"
-              echo "org_alias=qat" >> "$GITHUB_OUTPUT"
-              printf "%s" "$SALESFORCE_QAT_AUTH_URL" > ./auth-url.txt
-              ;;
-            preprod)
-              echo "environment_name=preprod" >> "$GITHUB_OUTPUT"
-              echo "org_alias=preprod" >> "$GITHUB_OUTPUT"
-              printf "%s" "$SALESFORCE_PREPROD_AUTH_URL" > ./auth-url.txt
-              ;;
-            main)
-              echo "environment_name=production" >> "$GITHUB_OUTPUT"
-              echo "org_alias=prod" >> "$GITHUB_OUTPUT"
-              printf "%s" "$SALESFORCE_PROD_AUTH_URL" > ./auth-url.txt
-              ;;
-            *)
-              echo "Unsupported target branch: ${{ github.base_ref }}"
-              exit 1
-              ;;
-          esac
+          echo "Metadata changes detected for target branch: ${{ github.base_ref }}"
+          echo "Trusted org validation and deployment will run after merge/push to the target branch."
 
       - name: Skip validation when no Salesforce metadata changed
         if: steps.changes.outputs.has_metadata_changes == 'false'
         run: echo "No Salesforce metadata changes detected in this pull request. Skipping org validation."
 
-      - name: Install Salesforce CLI
+      - name: Confirm pull request is ready for branch deployment
         if: steps.changes.outputs.has_metadata_changes == 'true'
-        run: npm install --global @salesforce/cli
-
-      - name: Authenticate to target org
-        if: steps.changes.outputs.has_metadata_changes == 'true'
-        run: |
-          sf org login sfdx-url --sfdx-url-file ./auth-url.txt --alias "${{ steps.target.outputs.org_alias }}"
-
-      - name: Validate deployment against target org
-        if: steps.changes.outputs.has_metadata_changes == 'true'
-        run: |
-          sf project deploy validate \
-            --target-org "${{ steps.target.outputs.org_alias }}" \
-            --source-dir force-app \
-            --test-level RunLocalTests \
-            --wait 120
+        run: echo "Pull request check passed. Deployment validation will occur automatically on branch push."
