@@ -1,0 +1,93 @@
+name: Validate Salesforce
+
+on:
+  pull_request:
+    branches:
+      - dev
+      - qat
+      - preprod
+      - main
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    env:
+      SALESFORCE_DEV_AUTH_URL: ${{ secrets.SALESFORCE_DEV_AUTH_URL }}
+      SALESFORCE_QAT_AUTH_URL: ${{ secrets.SALESFORCE_QAT_AUTH_URL }}
+      SALESFORCE_PREPROD_AUTH_URL: ${{ secrets.SALESFORCE_PREPROD_AUTH_URL }}
+      SALESFORCE_PROD_AUTH_URL: ${{ secrets.SALESFORCE_PROD_AUTH_URL }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - name: Detect Salesforce metadata changes
+        id: changes
+        run: |
+          CHANGED_FILES="$(git diff --name-only "${{ github.event.pull_request.base.sha }}" "${{ github.event.pull_request.head.sha }}")"
+          echo "$CHANGED_FILES"
+          if echo "$CHANGED_FILES" | grep -E '^(force-app/|manifest/|sfdx-project\.json|package\.xml|\.forceignore)' >/dev/null; then
+            echo "has_metadata_changes=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_metadata_changes=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Resolve target org
+        id: target
+        if: steps.changes.outputs.has_metadata_changes == 'true'
+        run: |
+          case "${{ github.base_ref }}" in
+            dev)
+              echo "environment_name=dev" >> "$GITHUB_OUTPUT"
+              echo "org_alias=dev" >> "$GITHUB_OUTPUT"
+              printf "%s" "$SALESFORCE_DEV_AUTH_URL" > ./auth-url.txt
+              ;;
+            qat)
+              echo "environment_name=qat" >> "$GITHUB_OUTPUT"
+              echo "org_alias=qat" >> "$GITHUB_OUTPUT"
+              printf "%s" "$SALESFORCE_QAT_AUTH_URL" > ./auth-url.txt
+              ;;
+            preprod)
+              echo "environment_name=preprod" >> "$GITHUB_OUTPUT"
+              echo "org_alias=preprod" >> "$GITHUB_OUTPUT"
+              printf "%s" "$SALESFORCE_PREPROD_AUTH_URL" > ./auth-url.txt
+              ;;
+            main)
+              echo "environment_name=production" >> "$GITHUB_OUTPUT"
+              echo "org_alias=prod" >> "$GITHUB_OUTPUT"
+              printf "%s" "$SALESFORCE_PROD_AUTH_URL" > ./auth-url.txt
+              ;;
+            *)
+              echo "Unsupported target branch: ${{ github.base_ref }}"
+              exit 1
+              ;;
+          esac
+
+      - name: Skip validation when no Salesforce metadata changed
+        if: steps.changes.outputs.has_metadata_changes == 'false'
+        run: echo "No Salesforce metadata changes detected in this pull request. Skipping org validation."
+
+      - name: Install Salesforce CLI
+        if: steps.changes.outputs.has_metadata_changes == 'true'
+        run: npm install --global @salesforce/cli
+
+      - name: Authenticate to target org
+        if: steps.changes.outputs.has_metadata_changes == 'true'
+        run: |
+          sf org login sfdx-url --sfdx-url-file ./auth-url.txt --alias "${{ steps.target.outputs.org_alias }}"
+
+      - name: Validate deployment against target org
+        if: steps.changes.outputs.has_metadata_changes == 'true'
+        run: |
+          sf project deploy validate \
+            --target-org "${{ steps.target.outputs.org_alias }}" \
+            --source-dir force-app \
+            --test-level RunLocalTests \
+            --wait 120

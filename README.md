@@ -1,41 +1,51 @@
 # Salesforce CI/CD
 
-This repository contains the Salesforce metadata for a Production-first CI/CD setup.
+This repository contains the Salesforce metadata and GitHub Actions workflows for a Salesforce promotion pipeline.
 
 ## Branch Strategy
 
+- `dev`: development sandbox deployment branch
+- `qat`: QAT sandbox deployment branch
+- `preprod`: pre-production sandbox deployment branch
 - `main`: production-ready code and production deployments
-- `dev`: development sandbox promotion branch
-- `qat`: QAT sandbox promotion branch
-- `preprod`: pre-production sandbox promotion branch
-
-Until the non-production sandboxes are ready, only the `main` production flow is active.
 
 ## Current Flow
 
-1. Create a feature branch from `main`.
-2. Commit Salesforce metadata changes.
-3. Open a pull request into `main`.
-4. GitHub Actions validates the deployment against Production.
-5. After approval, a production deployment can be triggered.
+1. Build and test changes in the `DEV` sandbox.
+2. Commit metadata changes and open a pull request into `dev`.
+3. GitHub validates the pull request against the `DEV` sandbox.
+4. After merge, GitHub deploys the same code to the `DEV` sandbox.
+5. Promote with pull requests from `dev` -> `qat` -> `preprod` -> `main`.
+6. Each pull request validates against its target org.
+7. Each merge deploys to its matching target org.
+8. `main` remains the production approval and deployment branch.
 
 ## GitHub Secrets
 
-Add these repository secrets before running deployments:
-
-- `SALESFORCE_PROD_AUTH_URL`
-
-Later, when the sandboxes are ready, also add:
+Add these repository secrets before running validations or deployments:
 
 - `SALESFORCE_DEV_AUTH_URL`
 - `SALESFORCE_QAT_AUTH_URL`
 - `SALESFORCE_PREPROD_AUTH_URL`
+- `SALESFORCE_PROD_AUTH_URL`
 
 ## GitHub Environments
 
-Create a GitHub environment named `production` and require manual approval for deployments.
+Create these GitHub environments:
+
+- `dev`
+- `qat`
+- `preprod`
+- `production`
+
+Recommended approvals:
+
+- `dev`: no approval gate
+- `qat`: optional approval gate
+- `preprod`: manual approval recommended
+- `production`: manual approval required
 
 ## Workflows
 
-- `.github/workflows/validate-production.yml`: validates pull requests targeting `main`
-- `.github/workflows/deploy-production.yml`: deploys to Production after a push to `main` or a manual trigger
+- `.github/workflows/validate-salesforce.yml`: validates pull requests targeting `dev`, `qat`, `preprod`, or `main`
+- `.github/workflows/deploy-salesforce.yml`: deploys to the target org after a merge into `dev`, `qat`, `preprod`, or `main`
