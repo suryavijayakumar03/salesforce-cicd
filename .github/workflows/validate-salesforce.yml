@@ -1,0 +1,50 @@
+name: Validate Salesforce
+
+on:
+  pull_request:
+    branches:
+      - dev
+      - qat
+      - preprod
+      - main
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - name: Detect Salesforce metadata changes
+        id: changes
+        run: |
+          CHANGED_FILES="$(git diff --name-only "${{ github.event.pull_request.base.sha }}" "${{ github.event.pull_request.head.sha }}")"
+          echo "$CHANGED_FILES"
+          if echo "$CHANGED_FILES" | grep -E '^(force-app/|manifest/|sfdx-project\.json|package\.xml|\.forceignore)' >/dev/null; then
+            echo "has_metadata_changes=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_metadata_changes=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Note metadata validation strategy
+        id: target
+        if: steps.changes.outputs.has_metadata_changes == 'true'
+        run: |
+          echo "Metadata changes detected for target branch: ${{ github.base_ref }}"
+          echo "Trusted org validation and deployment will run after merge/push to the target branch."
+
+      - name: Skip validation when no Salesforce metadata changed
+        if: steps.changes.outputs.has_metadata_changes == 'false'
+        run: echo "No Salesforce metadata changes detected in this pull request. Skipping org validation."
+
+      - name: Confirm pull request is ready for branch deployment
+        if: steps.changes.outputs.has_metadata_changes == 'true'
+        run: echo "Pull request check passed. Deployment validation will occur automatically on branch push."

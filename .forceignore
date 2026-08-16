@@ -1,0 +1,25 @@
+# Exclude metadata that was retrieved from Production but can't be safely
+# redeployed in the initial CI baseline.
+force-app/main/default/cleanDataServices/DataCloudCompanyMatch.cleanDataService-meta.xml
+force-app/main/default/cleanDataServices/DataCloudLeadAppend.cleanDataService-meta.xml
+force-app/main/default/dashboards/Sales_and_Marketing_Dashboards/Best_Practice_Leads_Dashboard.dashboard-meta.xml
+force-app/main/default/dashboards/Sales_and_Marketing_Dashboards/Best_Practices_Dashboard6.dashboard-meta.xml
+force-app/main/default/emailservices/EmailToSalesforce.xml-meta.xml
+force-app/main/default/installedPackages/OIQ.installedPackage-meta.xml
+force-app/main/default/managedContentTypes/cms_document.managedContentType-meta.xml
+force-app/main/default/managedContentTypes/cms_image.managedContentType-meta.xml
+force-app/main/default/managedContentTypes/news.managedContentType-meta.xml
+force-app/main/default/settings/Analytics.settings-meta.xml
+force-app/main/default/settings/Campaign.settings-meta.xml
+force-app/main/default/settings/Communities.settings-meta.xml
+force-app/main/default/settings/CustomerDataPlatform.settings-meta.xml
+force-app/main/default/settings/EmailAdministration.settings-meta.xml
+force-app/main/default/settings/EmployeeUser.settings-meta.xml
+force-app/main/default/settings/IdentityProvider.settings-meta.xml
+force-app/main/default/settings/Language.settings-meta.xml
+force-app/main/default/settings/Pardot.settings-meta.xml
+force-app/main/default/settings/PlatformEncryption.settings-meta.xml
+force-app/main/default/settings/SceGlobalModelOptOut.settings-meta.xml
+force-app/main/default/settings/Territory2.settings-meta.xml
+**/jsconfig.json
+**/.eslintrc.json
