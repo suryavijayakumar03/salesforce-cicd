@@ -20,6 +20,9 @@ on:
           - preprod
           - main
 
+permissions:
+  contents: write
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -111,3 +114,39 @@ jobs:
             --source-dir force-app \
             --test-level RunLocalTests \
             --wait 120
+
+      - name: Resolve promotion target
+        id: promote
+        if: steps.changes.outputs.has_metadata_changes == 'true'
+        run: |
+          case "$TARGET_BRANCH" in
+            dev)
+              echo "next_branch=qat" >> "$GITHUB_OUTPUT"
+              ;;
+            qat)
+              echo "next_branch=preprod" >> "$GITHUB_OUTPUT"
+              ;;
+            preprod)
+              echo "next_branch=main" >> "$GITHUB_OUTPUT"
+              ;;
+            main)
+              echo "next_branch=" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "Unsupported target branch for promotion: $TARGET_BRANCH"
+              exit 1
+              ;;
+          esac
+
+      - name: Promote branch forward
+        if: steps.changes.outputs.has_metadata_changes == 'true' && steps.promote.outputs.next_branch != ''
+        env:
+          NEXT_BRANCH: ${{ steps.promote.outputs.next_branch }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git fetch origin "$NEXT_BRANCH"
+          git checkout "$NEXT_BRANCH"
+          git merge "origin/$TARGET_BRANCH" --no-edit
+          git push origin "HEAD:$NEXT_BRANCH"
