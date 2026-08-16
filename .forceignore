@@ -21,3 +21,5 @@ force-app/main/default/settings/Pardot.settings-meta.xml
 force-app/main/default/settings/PlatformEncryption.settings-meta.xml
 force-app/main/default/settings/SceGlobalModelOptOut.settings-meta.xml
 force-app/main/default/settings/Territory2.settings-meta.xml
+**/jsconfig.json
+**/.eslintrc.json
